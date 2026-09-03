@@ -1,0 +1,175 @@
+/* The window is transparent; only the pet paints. */
+:root {
+  --body: #5b8def;
+  --body-dark: #3f68c4;
+  --visor: #16203a;
+  --eye: #7ef0ff;
+  --glyph: #ffd76a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Nothing is selectable or right-clickable; it's a pet, not a document. */
+  user-select: none;
+  cursor: default;
+}
+
+#stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#pet {
+  /* grab is the affordance: the whole pet is the drag handle */
+  cursor: grab;
+  transform-origin: 50% 90%;
+  will-change: transform;
+}
+#pet.dragging { cursor: grabbing; }
+
+/* Click-through mode: the OS forwards clicks past the window, so drop the
+   grab cursor and dim slightly to make the mode obvious. */
+body.click-through #pet { cursor: default; opacity: 0.75; }
+
+/* ---------- static SVG paint ---------- */
+#shadow { fill: rgba(0, 0, 0, 0.22); }
+#body { fill: var(--body); stroke: var(--body-dark); stroke-width: 2; }
+#visor { fill: var(--visor); }
+#antenna line { stroke: var(--body-dark); stroke-width: 3; stroke-linecap: round; }
+#antenna-tip { fill: var(--eye); }
+.foot { fill: var(--body-dark); }
+.eye-ball { fill: var(--eye); }
+.eye-shine { fill: #ffffff; opacity: 0.9; }
+.eye-closed {
+  fill: none; stroke: var(--eye); stroke-width: 3; stroke-linecap: round;
+  opacity: 0; /* shown only while blinking/asleep */
+}
+#glyph {
+  fill: var(--glyph); font-size: 26px; font-weight: 700;
+  font-family: system-ui, sans-serif; opacity: 0;
+}
+
+/* ---------- blink ---------- */
+#pet.blinking .eye-ball,
+#pet.blinking .eye-shine { opacity: 0; }
+#pet.blinking .eye-closed { opacity: 1; }
+
+/* ---------- gaze ---------- */
+/* Set by JS as a translate; transition smooths the 100ms polling steps. */
+#gaze { transition: transform 110ms linear; }
+
+/* =====================================================================
+   ANIMATION STATES
+   Each state is one CSS class on #pet. Swapping in Lottie/Rive later means
+   replacing these keyframes with animation names — see animator.js.
+   ===================================================================== */
+
+/* idle: slow breathing */
+#pet.state-idle #body-group { animation: breathe 3.4s ease-in-out infinite; }
+@keyframes breathe {
+  0%, 100% { transform: scale(1, 1) translateY(0); }
+  50%      { transform: scale(1.03, 0.97) translateY(1.5px); }
+}
+
+/* walk: faster bob, feet shuffle, slight lean */
+#pet.state-walk #body-group { animation: bob 0.42s ease-in-out infinite; }
+#pet.state-walk #foot-left  { animation: step-a 0.42s ease-in-out infinite; }
+#pet.state-walk #foot-right { animation: step-b 0.42s ease-in-out infinite; }
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50%      { transform: translateY(-4px) rotate(2deg); }
+}
+@keyframes step-a { 0%,100% { transform: translateX(-3px); } 50% { transform: translateX(3px); } }
+@keyframes step-b { 0%,100% { transform: translateX(3px); }  50% { transform: translateX(-3px); } }
+
+/* curious: perk up, antenna wiggle, eyes widen */
+#pet.state-curious #body-group { animation: perk 0.5s ease-out; }
+#pet.state-curious #antenna    { animation: wiggle 0.35s ease-in-out 3; transform-origin: 60px 30px; }
+#pet.state-curious .eye-ball   { transform: scale(1.15); transform-origin: center; }
+@keyframes perk {
+  0%   { transform: translateY(0) scale(1, 1); }
+  35%  { transform: translateY(-9px) scale(0.94, 1.08); }
+  70%  { transform: translateY(0) scale(1.06, 0.94); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes wiggle { 0%,100% { transform: rotate(-11deg); } 50% { transform: rotate(11deg); } }
+
+/* typing: head-down, fast small bob, narrowed eyes */
+#pet.state-typing #body-group { animation: tap 0.24s ease-in-out infinite; }
+#pet.state-typing .eye-ball   { transform: scaleY(0.55); transform-origin: center; }
+@keyframes tap {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-1.5px) rotate(1deg); }
+}
+
+/* react: poke shake */
+#pet.state-react #body-group { animation: shake 0.45s ease-in-out; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  20% { transform: translateX(-5px) rotate(-7deg) scale(1.05, 0.95); }
+  45% { transform: translateX(5px)  rotate(7deg); }
+  70% { transform: translateX(-3px) rotate(-4deg); }
+}
+#pet.state-react #glyph { opacity: 1; animation: pop 0.5s ease-out; }
+
+/* confused: head tilt + question mark (Phase 2 uses this for unmatched speech) */
+#pet.state-confused #body-group { animation: tilt 1s ease-in-out; }
+#pet.state-confused #glyph { opacity: 1; animation: pop 1s ease-out; }
+@keyframes tilt {
+  0%, 100% { transform: rotate(0deg); }
+  30% { transform: rotate(-12deg); }
+  65% { transform: rotate(9deg); }
+}
+@keyframes pop {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.6); }
+  30%  { opacity: 1; transform: translateY(0) scale(1.15); }
+  100% { opacity: 0; transform: translateY(-10px) scale(1); }
+}
+
+/* sleep: eyes shut, slow deep breathing, drifting z */
+#pet.state-sleep #body-group { animation: snore 4.2s ease-in-out infinite; }
+#pet.state-sleep .eye-ball,
+#pet.state-sleep .eye-shine  { opacity: 0; }
+#pet.state-sleep .eye-closed { opacity: 1; }
+#pet.state-sleep #glyph      { opacity: 1; animation: zzz 2.6s ease-out infinite; }
+@keyframes snore {
+  0%, 100% { transform: scale(1, 1) translateY(0) rotate(0deg); }
+  50%      { transform: scale(1.05, 0.95) translateY(3px) rotate(2deg); }
+}
+@keyframes zzz {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.7); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(8px, -22px) scale(1.1); }
+}
+
+/* ---------- facing ---------- */
+#pet.face-left #pet-svg { transform: scaleX(-1); }
+
+/* ---------- speech bubble (Phase 4) ---------- */
+#bubble {
+  position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+  max-width: 190px; padding: 6px 10px;
+  background: rgba(20, 24, 38, 0.92); color: #eef2ff;
+  border-radius: 10px; font-size: 12px; line-height: 1.35; text-align: center;
+  pointer-events: none;
+}
+
+/* ---------- debug overlay ---------- */
+#debug {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  font-size: 9px; line-height: 1.3; color: #cfe3ff;
+  background: rgba(10, 14, 26, 0.72); padding: 3px 5px;
+  border-radius: 5px; pointer-events: none; white-space: pre;
+}
+
+.hidden { display: none !important; }

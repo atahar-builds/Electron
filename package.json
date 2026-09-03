@@ -1,0 +1,27 @@
+{
+  "name": "desktop-pet",
+  "version": "0.1.0",
+  "description": "A dumb (no-LLM) desktop virtual pet built with Electron",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "rebuild": "electron-rebuild -f -w active-win",
+    "postinstall": "electron-rebuild -f -w active-win || node -e \"console.warn('[postinstall] active-win native rebuild failed - app activity reactivity will be disabled, everything else still works. Run: npm run rebuild')\""
+  },
+  "keywords": [
+    "electron",
+    "desktop-pet",
+    "virtual-pet"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
+    "electron": "^44.1.1"
+  },
+  "dependencies": {
+    "active-win": "^9.0.0",
+    "dotenv": "^16.4.5",
+    "electron-store": "^8.2.0"
+  }
+}
